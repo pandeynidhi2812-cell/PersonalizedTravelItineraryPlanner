@@ -13,13 +13,13 @@ from pydantic import BaseModel, Field  # noqa: E402
 
 from . import ai, planner, supabase_sync  # noqa: E402
 from .auth import current_user, hash_password, make_token, verify_password  # noqa: E402
-from .database import db, init_db, load_bundle, loads, q, q1  # noqa: E402
+from .database import close_pg_pool, db, execute_insert, init_db, load_bundle, loads, q, q1  # noqa: E402
 from .seed import seed_if_empty  # noqa: E402
 
 app = FastAPI(title="Personalized Travel Itinerary Planner", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=([o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()] or ["http://localhost:5173", "http://127.0.0.1:5173"]),
+    allow_origins=([o.strip().rstrip("/") for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()] or ["http://localhost:5173", "http://127.0.0.1:5173"]),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,6 +33,11 @@ PACES = {"relaxed", "balanced", "packed"}
 def startup():
     init_db()
     seed_if_empty()
+
+
+@app.on_event("shutdown")
+def shutdown():
+    close_pg_pool()
 
 
 # ---------- schemas ----------
@@ -117,10 +122,22 @@ def _params(conn, row):
     }
 
 
+def _format_ts(val):
+    if not val:
+        return ""
+    if hasattr(val, "isoformat"):
+        return val.isoformat()
+    return str(val)
+
+
 def _trip_out(conn, row, role, full=True):
     t = dict(row)
     t["interests"] = loads(t["interests"], [])
     itin = loads(t.pop("itinerary"), None)
+    if "created_at" in t:
+        t["created_at"] = _format_ts(t["created_at"])
+    if "updated_at" in t:
+        t["updated_at"] = _format_ts(t["updated_at"])
     dest = q1(conn, "SELECT name, state FROM destinations WHERE id = ?", (t["destination_id"],))
     owner = q1(conn, "SELECT name, email FROM users WHERE id = ?", (t["owner_id"],))
     t["destination_name"] = dest["name"]
@@ -166,9 +183,9 @@ def register(body: RegisterIn):
     with db() as conn:
         if q1(conn, "SELECT id FROM users WHERE email = ?", (email,)):
             raise HTTPException(409, "An account with this email already exists")
-        cur = conn.execute("INSERT INTO users (name, email, password_hash, home_city) VALUES (?,?,?,?)",
+        user_id = execute_insert(conn, "INSERT INTO users (name, email, password_hash, home_city) VALUES (?,?,?,?)",
                            (body.name.strip(), email, hash_password(body.password), body.home_city.strip()))
-        user = q1(conn, "SELECT id, name, email, role, home_city, travel_style FROM users WHERE id = ?", (cur.lastrowid,))
+        user = q1(conn, "SELECT id, name, email, role, home_city, travel_style FROM users WHERE id = ?", (user_id,))
     return {"token": make_token(user["id"]), "user": user}
 
 
@@ -249,12 +266,13 @@ def create_trip(body: TripIn, user=Depends(current_user)):
              "budget": body.budget, "style": body.style, "pace": body.pace, "interests": interests}
         itin = planner.generate_itinerary(bundle, p, seed=0)
         itin["overview"], itin["tips"] = ai.narrate(bundle, p, itin)
-        cur = conn.execute(
+        trip_id = execute_insert(
+            conn,
             "INSERT INTO trips (owner_id, destination_id, title, start_date, end_date, travelers, budget, style, pace, "
             "interests, itinerary, total_cost) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
             (user["id"], body.destination_id, title, body.start_date.isoformat(), body.end_date.isoformat(),
              body.travelers, body.budget, body.style, body.pace, json.dumps(interests), json.dumps(itin), itin["total_cost"]))
-        trip_id = cur.lastrowid
+        # trip_id obtained via execute_insert
     with db() as conn:
         _mirror(conn, trip_id, user)
         row, role = _trip_access(conn, trip_id, user)
@@ -397,5 +415,5 @@ def dashboard(user=Depends(current_user)):
             "destinations_available": dest_count,
         },
         "next_trip": upcoming[0] if upcoming else None,
-        "recent": sorted(trips, key=lambda t: t["updated_at"] or "", reverse=True)[:5],
+        "recent": sorted(trips, key=lambda t: _format_ts(t.get("updated_at")), reverse=True)[:5],
     }

@@ -3,7 +3,7 @@ from datetime import date
 
 from . import ai
 from .auth import hash_password
-from .database import init_db, db, q, q1, load_bundle
+from .database import init_db, db, q, q1, load_bundle, is_postgres, sync_sequences
 from .planner import generate_itinerary
 from . import seed_data as S
 
@@ -46,4 +46,6 @@ def seed_if_empty():
         for idx, uid, role, interests in S.TRIP_MEMBERS:
             conn.execute("INSERT INTO trip_members (trip_id, user_id, role, interests) VALUES (?,?,?,?)",
                          (trip_ids[idx - 1], uid, role, json.dumps(interests)))
+        if is_postgres():
+            sync_sequences(conn)
     return True
