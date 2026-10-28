@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import List, Optional
 
 from dotenv import load_dotenv
@@ -19,7 +19,7 @@ from .seed import seed_if_empty  # noqa: E402
 app = FastAPI(title="Personalized Travel Itinerary Planner", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=([o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()] or ["http://localhost:5173", "http://127.0.0.1:5173"]),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -142,7 +142,7 @@ def _trip_out(conn, row, role, full=True):
 
 def _save_itinerary(conn, trip_id, itin):
     conn.execute("UPDATE trips SET itinerary = ?, total_cost = ?, updated_at = ? WHERE id = ?",
-                 (json.dumps(itin), itin["total_cost"], datetime.utcnow().isoformat(timespec="seconds"), trip_id))
+                 (json.dumps(itin), itin["total_cost"], datetime.now(timezone.utc).isoformat(timespec="seconds"), trip_id))
 
 
 def _mirror(conn, trip_id, user):
@@ -293,7 +293,7 @@ def update_trip(trip_id: int, body: TripUpdate, user=Depends(current_user)):
                         a["cost"] = 0
             planner.recompute(itin, budget, row["travelers"])
             _save_itinerary(conn, trip_id, itin)
-        conn.execute("UPDATE trips SET updated_at = ? WHERE id = ?", (datetime.utcnow().isoformat(timespec="seconds"), trip_id))
+        conn.execute("UPDATE trips SET updated_at = ? WHERE id = ?", (datetime.now(timezone.utc).isoformat(timespec="seconds"), trip_id))
     with db() as conn:
         _mirror(conn, trip_id, user)
         row, role = _trip_access(conn, trip_id, user)

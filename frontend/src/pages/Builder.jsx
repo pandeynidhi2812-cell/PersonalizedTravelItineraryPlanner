@@ -61,68 +61,124 @@ export default function Builder() {
     <form className="stack" onSubmit={submit}>
       <div className="page-head">
         <div>
-          <h1>Plan a trip</h1>
-          <p>Pick a destination and your preferences. The plan is generated in a moment and you can edit any part of it.</p>
+          <div className="small muted" style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--forest)' }}>
+            Itinerary Studio
+          </div>
+          <h1>Craft your journey</h1>
+          <p>Configure your destination and preferences. Tripora algorithmically builds an optimized day-by-day plan with attractions, stays, food, and local transit.</p>
         </div>
       </div>
 
       <section className="card stack">
-        <h2>Where to?</h2>
+        <div className="row between">
+          <div>
+            <h2>1. Where are you heading?</h2>
+            <p className="small muted">Select one of our curated Indian destinations</p>
+          </div>
+          {dest && <span className="tag good">{dest.state}</span>}
+        </div>
         <div className="dest-pick">
           {dests.map((d) => (
-            <button type="button" key={d.id} className={f.destination_id === d.id ? 'on' : ''} onClick={() => setF({ ...f, destination_id: d.id })}>
+            <button
+              type="button"
+              key={d.id}
+              className={f.destination_id === d.id ? 'on' : ''}
+              onClick={() => setF({ ...f, destination_id: d.id })}
+            >
               <b>{d.name}</b>
               <small>{d.state}</small>
-              <div className="small muted" style={{ marginTop: 6 }}>about {inr(d.avg_daily_budget)} per person per day</div>
+              <div className="small muted" style={{ marginTop: 6, fontSize: 11.5 }}>
+                ~{inr(d.avg_daily_budget)} / day / person
+              </div>
             </button>
           ))}
         </div>
       </section>
 
       <section className="card">
-        <h2 style={{ marginBottom: 16 }}>When and who</h2>
-        <div className="grid g4">
-          <label className="field"><span>Trip name</span><input value={f.title} onChange={set('title')} placeholder="Optional" maxLength={120} /></label>
-          <label className="field"><span>Start date</span><input type="date" required value={f.start_date} onChange={set('start_date')} /></label>
-          <label className="field"><span>End date</span><input type="date" required min={f.start_date} value={f.end_date} onChange={set('end_date')} /></label>
-          <label className="field"><span>Travellers</span><input type="number" min={1} max={20} required value={f.travelers} onChange={set('travelers')} /></label>
+        <div style={{ marginBottom: 16 }}>
+          <h2>2. Dates and travellers</h2>
+          <p className="small muted">Tripora clusters each day by geographic area to prevent excessive transit.</p>
         </div>
-        <p className="small muted" style={{ marginTop: 10 }}>{days} day{days === 1 ? '' : 's'}{days > 14 ? ' (maximum is 14)' : ''}</p>
+        <div className="grid g4">
+          <label className="field">
+            <span>Trip title</span>
+            <input value={f.title} onChange={set('title')} placeholder="e.g. Summer in Manali" maxLength={120} />
+          </label>
+          <label className="field">
+            <span>Start date</span>
+            <input type="date" required value={f.start_date} onChange={set('start_date')} />
+          </label>
+          <label className="field">
+            <span>End date</span>
+            <input type="date" required min={f.start_date} value={f.end_date} onChange={set('end_date')} />
+          </label>
+          <label className="field">
+            <span>Number of travellers</span>
+            <input type="number" min={1} max={20} required value={f.travelers} onChange={set('travelers')} />
+          </label>
+        </div>
+        <p className="small muted" style={{ marginTop: 12, fontWeight: 500 }}>
+          Journey span: <b style={{ color: 'var(--charcoal)' }}>{days} day{days === 1 ? '' : 's'}</b>
+          {days > 14 && <span style={{ color: 'var(--coral)', marginLeft: 8 }}>(maximum supported is 14 days)</span>}
+        </p>
       </section>
 
       <section className="card stack">
-        <h2>Budget and style</h2>
+        <div>
+          <h2>3. Budget, stay tier & pace</h2>
+          <p className="small muted">Realistic budgeting calibrated against verified hotel tiers and transport rates.</p>
+        </div>
         <div className="grid g3">
           <label className="field">
-            <span>Total budget (INR)</span>
+            <span>Total trip budget (INR)</span>
             <input type="number" min={500} step={500} required value={f.budget} onChange={set('budget')} />
-            {hint > 0 && <small className="muted">A typical trip like this costs around {inr(hint)}.</small>}
+            {hint > 0 && (
+              <small className="muted" style={{ display: 'block', marginTop: 4 }}>
+                Estimated benchmark for this duration: <b>{inr(hint)}</b>
+              </small>
+            )}
           </label>
           <div>
-            <div className="field"><span style={{ display: 'block', marginBottom: 6 }}>Stay and dining</span></div>
+            <div className="field"><span style={{ display: 'block', marginBottom: 6 }}>Stay tier</span></div>
             <div className="seg">
               {['budget', 'mid', 'premium'].map((s) => (
-                <button type="button" key={s} className={f.style === s ? 'on' : ''} onClick={() => setF({ ...f, style: s })}>{cap(s)}</button>
+                <button type="button" key={s} className={f.style === s ? 'on' : ''} onClick={() => setF({ ...f, style: s })}>
+                  {cap(s)}
+                </button>
               ))}
             </div>
           </div>
           <div>
-            <div className="field"><span style={{ display: 'block', marginBottom: 6 }}>Pace</span></div>
+            <div className="field"><span style={{ display: 'block', marginBottom: 6 }}>Daily pace</span></div>
             <div className="seg">
               {['relaxed', 'balanced', 'packed'].map((s) => (
-                <button type="button" key={s} className={f.pace === s ? 'on' : ''} onClick={() => setF({ ...f, pace: s })}>{cap(s)}</button>
+                <button type="button" key={s} className={f.pace === s ? 'on' : ''} onClick={() => setF({ ...f, pace: s })}>
+                  {cap(s)}
+                </button>
               ))}
             </div>
           </div>
         </div>
-        <p className="small muted">If the plan costs more than your budget, Wayfare steps the stay and dining down a tier automatically and tells you what changed.</p>
+        <div className="small muted" style={{ background: 'var(--cream)', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--line)' }}>
+          💡 <b>Budget Guarantee:</b> If your chosen plan exceeds your budget, Tripora automatically steps down accommodation and dining tiers to keep you on budget.
+        </div>
       </section>
 
       <section className="card stack">
-        <h2>What do you enjoy?</h2>
+        <div>
+          <h2>4. What interests you?</h2>
+          <p className="small muted">Attractions matching your interests are weighted and scheduled at their optimal time of day.</p>
+        </div>
         <div className="chips">
           {INTERESTS.map((i) => (
-            <button type="button" key={i} className={`chip ${f.interests.includes(i) ? 'on' : ''}`} aria-pressed={f.interests.includes(i)} onClick={() => toggle(i)}>
+            <button
+              type="button"
+              key={i}
+              className={`chip ${f.interests.includes(i) ? 'on' : ''}`}
+              aria-pressed={f.interests.includes(i)}
+              onClick={() => toggle(i)}
+            >
               {cap(i)}
             </button>
           ))}
@@ -130,9 +186,14 @@ export default function Builder() {
       </section>
 
       {error && <div className="alert" role="alert">{error}</div>}
-      <div className="row">
-        <button className="btn accent" disabled={busy || !f.destination_id || days < 1 || days > 14}>
-          {busy ? 'Building your itinerary...' : 'Generate itinerary'}
+
+      <div className="row" style={{ paddingTop: 8 }}>
+        <button
+          className="btn"
+          disabled={busy || !f.destination_id || days < 1 || days > 14}
+          style={{ padding: '12px 28px', fontSize: 16 }}
+        >
+          {busy ? 'Building your itinerary...' : '✨ Generate itinerary'}
         </button>
       </div>
     </form>

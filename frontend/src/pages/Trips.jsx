@@ -13,45 +13,51 @@ export default function Trips() {
   }, [])
 
   if (error) return <div className="alert">{error}</div>
-  if (!trips) return <div className="muted">Loading trips...</div>
+  if (!trips) return <div className="muted">Loading your Tripora itineraries...</div>
   const shown = trips.filter((t) => filter === 'all' || (filter === 'mine' ? t.role === 'owner' : t.role !== 'owner'))
 
   return (
     <div className="stack">
       <div className="page-head">
         <div>
-          <h1>My trips</h1>
-          <p>Everything you own or have been invited to edit.</p>
+          <div className="small muted" style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--forest)' }}>
+            My Collection
+          </div>
+          <h1 style={{ marginTop: 2 }}>Curated Journeys</h1>
+          <p>Browse all itineraries you've designed or have been invited to collaborate on.</p>
         </div>
         <div className="seg" role="tablist">
-          {[['all', 'All'], ['mine', 'Owned'], ['shared', 'Shared']].map(([k, label]) => (
+          {[['all', 'All Trips'], ['mine', 'Owned'], ['shared', 'Shared with me']].map(([k, label]) => (
             <button key={k} className={filter === k ? 'on' : ''} onClick={() => setFilter(k)}>{label}</button>
           ))}
         </div>
       </div>
 
       {shown.length === 0 && (
-        <div className="card">
-          <p className="muted">No trips here yet.</p>
-          <Link className="btn" style={{ marginTop: 12 }} to="/plan">Plan one</Link>
+        <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+          <p className="muted" style={{ fontSize: 16 }}>No itineraries found in this filter.</p>
+          <Link className="btn" style={{ marginTop: 16 }} to="/plan">Plan a new trip</Link>
         </div>
       )}
 
       <div className="grid g3">
         {shown.map((t) => (
           <Link key={t.id} to={`/trips/${t.id}`} className="card trip-card" style={{ color: 'inherit', textDecoration: 'none' }}>
-            <div className="dest">{t.destination_name}, {t.destination_state}</div>
-            <h3 style={{ fontSize: 19 }}>{t.title}</h3>
+            <div className="row between">
+              <div className="dest">{t.destination_name}, {t.destination_state}</div>
+              <span className="tag" style={{ fontSize: 11 }}>{t.role === 'owner' ? 'Owner' : 'Co-Editor'}</span>
+            </div>
+            <h3 style={{ fontSize: 19, letterSpacing: '-0.01em' }}>{t.title}</h3>
             <div className="muted small">{fmtRange(t.start_date, t.end_date)}</div>
-            <div className="row wrap">
+            <div className="row wrap" style={{ gap: 6, marginTop: 4 }}>
               <span className="tag">{t.days} days</span>
               <span className="tag">{t.travelers} traveller{t.travelers > 1 ? 's' : ''}</span>
               <span className="tag">{cap(t.pace)}</span>
               {t.role !== 'owner' && <span className="tag gold">Shared by {t.owner_name.split(' ')[0]}</span>}
             </div>
-            <div className="row between" style={{ marginTop: 'auto', paddingTop: 8 }}>
-              <span className="cost num">{inr(t.total_cost)}</span>
-              <span className={`tag ${t.budget_status === 'over' ? 'bad' : 'good'}`}>{t.budget_status === 'over' ? 'Over budget' : 'Within budget'}</span>
+            <div className="row between" style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+              <div className="cost">{inr(t.total_cost || t.budget)}</div>
+              <span className="small muted" style={{ fontWeight: 600, color: 'var(--forest)' }}>View itinerary →</span>
             </div>
           </Link>
         ))}

@@ -1,4 +1,5 @@
-const BASE = '/api'
+const envBase = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '')
+const BASE = envBase ? (envBase.endsWith('/api') ? envBase : `${envBase}/api`) : '/api'
 
 export const getToken = () => localStorage.getItem('token')
 export const setToken = (t) => (t ? localStorage.setItem('token', t) : localStorage.removeItem('token'))
